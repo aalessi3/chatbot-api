@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/chat_hardcode.js": {
+      "maxDuration": 10
+    }
+  }
+}
