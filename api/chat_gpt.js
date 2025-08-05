@@ -1,12 +1,62 @@
+// Global rate limit store (persists during function lifetime)
+const rateLimitStore = new Map();
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const windowMs = 60000; // 1 minute
+  const maxRequests = 10;
+  
+  const key = `rate_${ip}`;
+  const record = rateLimitStore.get(key) || { count: 0, resetTime: now + windowMs };
+  
+  if (now > record.resetTime) {
+    // Reset window
+    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= maxRequests) {
+    return false; // Rate limited
+  }
+  
+  // Increment counter
+  record.count++;
+  rateLimitStore.set(key, record);
+  return true;
+}
+
 export default async function handler(req, res) {
   // Set CORS headers for ALL requests
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = [
+    'https://aalessi3.github.io',
+    'http://localhost:3000',
+    'http://127.0.0.1:5500',
+    'http://localhost:5500'
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   // Handle preflight request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // Rate limiting check
+  const clientIP = req.headers['x-forwarded-for']?.split(',')[0] || 
+                   req.headers['x-real-ip'] || 
+                   req.connection?.remoteAddress || 
+                   'unknown';
+  
+  if (!checkRateLimit(clientIP)) {
+    return res.status(429).json({
+      error: "Rate limit exceeded. Please try again in a minute.",
+      success: false
+    });
   }
   
   // Only allow POST requests
