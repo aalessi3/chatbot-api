@@ -1,7 +1,7 @@
 {
   "functions": {
-    "api/chat_hardcode.js": {
-      "maxDuration": 10
+    "api/chat_gpt.js": {
+      "maxDuration": 20
     }
   }
 }
